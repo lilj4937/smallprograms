@@ -30,9 +30,12 @@ public class CabinetServerSocket {
 	public void init() {
 		try {
 			serverSocket = new ServerSocket(PORT);
+			int count = 0;
 			// 等待请求,此方法会一直阻塞,直到获得请求才往下走
 			while (true) {
+				count ++;
 				Socket socket = serverSocket.accept();
+				System.out.println("count:"+count);
 				Client client = new Client(socket); // 创建客户端处理线程对象
 				Thread thead = new Thread(client); // 创建客户端处理线程
 				thead.start(); // 启动线程
@@ -64,7 +67,7 @@ class Client implements Runnable {
 		DATAINFO[7] = (byte) 0x00;
 		DATAINFO[8] = (byte) 0x00;
 		DATAINFO[9] = (byte) 0x00;
-		DATAINFO[10] = (byte) 0x80;
+		DATAINFO[10] = (byte) 0x86;
 		DATAINFO[11] = (byte) 0x80;
 		DATAINFO[12] = (byte) 0x48;
 	}
@@ -72,30 +75,27 @@ class Client implements Runnable {
 	public void run() {
 		// 打印出客户端数据
 		try {
+			System.out.println("==================================");
 			InputStream in = socket.getInputStream();
-			int size = in.available();
-			if(size == 0){
-				return;
-			}
-			byte[] temp = new byte[size];
-			in.read(temp,0,size);
+			byte[] temp = new byte[1024];
+			in.read(temp,0,1024);
 			String message = new String(temp);
 			System.out.println("接收到的信息："+message);
 			boolean b = false;
-			if("LMS\\xfe".equals(message.replace(" ", ""))){//获取信息
+			if("LMS\\xfe".equals(message.trim())){//获取信息
 				b = true;
-			}else if("LCDFS\\xfe".equals(message.replace(" ", ""))){//开启前门
+			}else if("LCDFS\\xfe".equals(message.trim())){//开启前门
 				byte bt = DATAINFO[4];
-				if(bt == 0){
-					DATAINFO[4] = (byte) 0x10;
-				}else if(bt == 1){
+				if(bt == 1){
 					DATAINFO[4] = (byte) 0x11;
+				}else{
+					DATAINFO[4] = (byte) 0x10;
 				}
-			}else if("LCDBS\\xfe".equals(message.replace(" ", ""))){//开启后门
+			}else if("LCDBS\\xfe".equals(message.trim())){//开启后门
 				byte bt = DATAINFO[4];
 				if(bt == 10){
 					DATAINFO[4] = (byte) 0x11;
-				}else if(bt == 0){
+				}else{
 					DATAINFO[4] = (byte) 0x01;
 				}
 			}
@@ -146,16 +146,22 @@ class CabinetClientSocket{
 		Socket s = new Socket("192.168.1.89", this.port); //创建一个Socket对象，连接IP地址为192.168.24.177的服务器的5566端口  
 	    DataOutputStream dos = new DataOutputStream(s.getOutputStream()); //获取Socket对象的输出流，并且在外边包一层DataOutputStream管道，方便输出数据  
 	    if(data != null){
-			System.out.println("发送的信息 data："+new String(data));
 		    dos.write(data);
+			System.out.print("发送的信息 data:");
+		    for (byte bt : data) {
+				System.out.print(" "+bt);
+			}
+		    System.out.println();
 	    }
 	    
 	    if(message != null){
-			System.out.println("发送的信息 message："+message);
-		    dos.writeChars(message);
+		    dos.write(message.getBytes());
+			System.out.println("发送的信息 message:"+message);
 	    }
 	    dos.flush(); //确保所有数据都已经输出  
 	    dos.close(); //关闭输出流  
+	    dos = null;
 	    s.close(); //关闭Socket连接  
+	    s = null;
 	}
 }
